@@ -4,6 +4,7 @@ import pandas as pd
 from PIL import Image
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+from sklearn.preprocessing import PolynomialFeatures
 
 def sliceChannels(width, height, R, G, B, n=2):
     p = height
@@ -46,20 +47,24 @@ def main(img_path):
     B = np.asarray(img.getdata(band=2), dtype=np.uint8)
     B = B.reshape(height, width)
 
-    X = np.linspace(0, 1, int(width/n)).reshape(1, int(width/n))
-    Y = np.linspace(0, 1, int(height/n)).reshape(int(width/n), 1)
-    (_X, _Y) = np.meshgrid(X, Y, sparse=False, indexing='ij')
+    (X, Y) = np.meshgrid(np.linspace(0, 1, int(width/n)).reshape(1, int(width/n)), 
+                         np.linspace(0, 1, int(height/n)).reshape(int(width/n), 1), 
+                         sparse=False, indexing='ij')
+
+    # Z = np.matmul(X)
+
+    # print(X)
     
-    features = {}
-    features['X^0*Y^0'] = np.matmul(X**0,Y**0).flatten()
-    features['X*Y'] = np.matmul(X,Y).flatten()
-    features['X*Y^2'] = np.matmul(X,Y**2).flatten()
-    features['X^2*Y^0'] = np.matmul(X**2, Y**0).flatten()
-    features['X^2*Y'] = np.matmul(X**2, Y).flatten()
-    features['X^3*Y^2'] = np.matmul(X**3, Y**2).flatten()
-    features['X^3*Y'] = np.matmul(X**3, Y).flatten()
-    features['X^0*Y^3'] = np.matmul(X**0, Y**3).flatten()
-    dataset = pd.DataFrame(features)
+    # features = {}
+    # features['X^0*Y^0'] = np.matmul(X**0, Y**0).flatten()
+    # features['X*Y'] = np.matmul(X, Y).flatten()
+    # features['X*Y^2'] = np.matmul(X, Y**2).flatten()
+    # features['X^2*Y^0'] = np.matmul(X**2, Y**0).flatten()
+    # features['X^2*Y'] = np.matmul(X**2, Y).flatten()
+    # features['X^3*Y^2'] = np.matmul(X**3, Y**2).flatten()
+    # features['X^3*Y'] = np.matmul(X**3, Y).flatten()
+    # features['X^0*Y^3'] = np.matmul(X**0, Y**3).flatten()
+    # dataset = pd.DataFrame(features)
 
     # print(len(X))
     # print(len(Y))
@@ -72,12 +77,24 @@ def main(img_path):
 
     (U, V, W) = sliceChannels(width, height, R, G, B, n)
 
+    # print(dataset.values.shape)
+    # print(U[0].flatten().shape)
+
+    # print(dataset)
+
+    poly = PolynomialFeatures(3)
+    print(poly)
+    reg = poly.fit(U[0])
+    print(reg)
+
+    # print(reg)
+
     # print(len(R[0:int((height/n)), 0:int((width/n))]))
 
-    fig = plt.figure()
-    ax = Axes3D(fig)
-    ax.plot_surface(X=_X, Y=_Y, Z=V[0])
-    plt.show()
+    # fig = plt.figure()
+    # ax = Axes3D(fig)
+    # ax.plot_surface(X=_X, Y=_Y, Z=V[0])
+    # plt.show()
 
     # DEBUG: Check slicing
     # img_U0 = Image.fromarray(U[0], mode='L')
