@@ -1,0 +1,41 @@
+# Folders
+__pycache__/
+.vscode/
+
+build/
+dist/
+
+develop-eggs/
+eggs/
+_ext/
+
+_res/
+
+*env*/
+
+# Weights
+*.pth
+*.weights
+
+# Lib extensions
+*.so
+*.o
+*.exp
+*.lib
+*.pyd
+*.pyc
+*.idea
+
+# Img extensions
+*.jpg
+*.bmp
+*.png
+*.xcf
+
+# Videos
+*.mp4
+*.avi
+
+# Misc
+*.egg-info
+*.zip
