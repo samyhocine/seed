@@ -47,16 +47,18 @@ def main(img_path):
     B = np.asarray(img.getdata(band=2), dtype=np.uint8)
     B = B.reshape(height, width)
 
-    (X, Y) = np.meshgrid(np.linspace(0, 1, int(width/n)).reshape(1, int(width/n)), 
-                         np.linspace(0, 1, int(height/n)).reshape(int(width/n), 1), 
-                         sparse=False, indexing='ij')
+    X = np.linspace(0, 1, int(width/n)).reshape(1, int(width/n))
+    Y = np.linspace(0, 1, int(height/n)).reshape(int(width/n), 1)
+    (XX, YY) = np.meshgrid(X, Y, sparse=False, indexing='ij')
 
-    # Z = np.matmul(X)
+    # print(X.flatten())
+    # print(Y.flatten())
 
     # print(X)
     
     # features = {}
     # features['X^0*Y^0'] = np.matmul(X**0, Y**0).flatten()
+    # print(features['X^0*Y^0'])
     # features['X*Y'] = np.matmul(X, Y).flatten()
     # features['X*Y^2'] = np.matmul(X, Y**2).flatten()
     # features['X^2*Y^0'] = np.matmul(X**2, Y**0).flatten()
@@ -82,10 +84,12 @@ def main(img_path):
 
     # print(dataset)
 
-    poly = PolynomialFeatures(3)
-    print(poly)
-    reg = poly.fit(U[0])
-    print(reg)
+    print(X.flatten())
+
+    # poly_features = PolynomialFeatures(degree=3)
+    # print(poly_features)
+    # X_poly = poly_features.fit_transform(np.array([X.flatten(), Y.flatten()]))
+    # print(X_poly[2])
 
     # print(reg)
 
