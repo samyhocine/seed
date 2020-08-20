@@ -26,12 +26,6 @@ _res/
 *.pyc
 *.idea
 
-# Img extensions
-*.jpg
-*.bmp
-*.png
-*.xcf
-
 # Videos
 *.mp4
 *.avi

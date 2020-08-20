@@ -1,10 +1,10 @@
 import argparse
 import numpy as np
-import pandas as pd
 from PIL import Image
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from sklearn.preprocessing import PolynomialFeatures
+from sklearn.preprocessing import MinMaxScaler
 
 def sliceChannels(width, height, R, G, B, n=2):
     p = height
@@ -47,29 +47,6 @@ def main(img_path):
     B = np.asarray(img.getdata(band=2), dtype=np.uint8)
     B = B.reshape(height, width)
 
-    X = np.linspace(0, 1, int(width/n)).reshape(1, int(width/n))
-    Y = np.linspace(0, 1, int(height/n)).reshape(int(width/n), 1)
-    (XX, YY) = np.meshgrid(X, Y, sparse=False, indexing='ij')
-
-    # print(X.flatten())
-    # print(Y.flatten())
-
-    # print(X)
-    
-    # features = {}
-    # features['X^0*Y^0'] = np.matmul(X**0, Y**0).flatten()
-    # print(features['X^0*Y^0'])
-    # features['X*Y'] = np.matmul(X, Y).flatten()
-    # features['X*Y^2'] = np.matmul(X, Y**2).flatten()
-    # features['X^2*Y^0'] = np.matmul(X**2, Y**0).flatten()
-    # features['X^2*Y'] = np.matmul(X**2, Y).flatten()
-    # features['X^3*Y^2'] = np.matmul(X**3, Y**2).flatten()
-    # features['X^3*Y'] = np.matmul(X**3, Y).flatten()
-    # features['X^0*Y^3'] = np.matmul(X**0, Y**3).flatten()
-    # dataset = pd.DataFrame(features)
-
-    # print(len(X))
-    # print(len(Y))
     # print(len(R[0:int((height/n)), 0:int((width/n))]))
     
     # fig = plt.figure()
@@ -79,12 +56,33 @@ def main(img_path):
 
     (U, V, W) = sliceChannels(width, height, R, G, B, n)
 
-    # print(dataset.values.shape)
+    print("len(U)", len(U))
+
+    NU0 = MinMaxScaler().fit_transform(U[0].reshape(-1, 1)).reshape(U[0].shape[0], U[0].shape[1])
+
+    X, Y = np.meshgrid(np.linspace(start=0, stop=1, num=NU0.shape[1], endpoint=True), 
+                    np.linspace(start=0, stop=1, num=NU0.shape[0], endpoint=True), 
+                    sparse=False, indexing='xy')
+
+    C = np.c_[X.flatten(), Y.flatten()]
+
+    M = PolynomialFeatures(degree=3).fit_transform(C)
+
+    CNU0 = np.linalg.lstsq(M, NU0.flatten(), rcond=None)[0]
+    CNU0 = np.asarray(CNU0).reshape(M.shape[1], 1)
+
+    print(CNU0)
+
+    D = np.matmul(M, CNU0).reshape(NU0.shape[0], NU0.shape[1])
+
+    # Todo optimise: If coeff < 10e-9 then coeff = 0
+
+    # Test
+    # D = np.matmul()
+
     # print(U[0].flatten().shape)
 
     # print(dataset)
-
-    print(X.flatten())
 
     # poly_features = PolynomialFeatures(degree=3)
     # print(poly_features)
@@ -95,10 +93,11 @@ def main(img_path):
 
     # print(len(R[0:int((height/n)), 0:int((width/n))]))
 
-    # fig = plt.figure()
-    # ax = Axes3D(fig)
-    # ax.plot_surface(X=_X, Y=_Y, Z=V[0])
-    # plt.show()
+    fig = plt.figure()
+    ax = Axes3D(fig)
+    ax.plot_surface(X=X, Y=Y, Z=NU0)
+    ax.plot_surface(X=X, Y=Y, Z=D) # Debug
+    plt.show()
 
     # DEBUG: Check slicing
     # img_U0 = Image.fromarray(U[0], mode='L')
