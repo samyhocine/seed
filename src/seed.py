@@ -6,8 +6,16 @@ from mpl_toolkits.mplot3d import Axes3D
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.preprocessing import MinMaxScaler
 
-def sliceChannels(width, height, R, G, B, n=2):
-    p = height
+def sliceChannels(width, height, R, G, B, n):
+    p = height # hypothesis: width=height (for now)
+
+    # Debug
+    RGB = np.zeros([height, width, 3], dtype=np.uint8)
+    RGB[:,:,0] = R
+    RGB[:,:,1] = G
+    RGB[:,:,2] = B
+    img = Image.fromarray(RGB)
+    img.save('../data/dbg/in.png')
 
     U = []
     V = []
@@ -27,13 +35,22 @@ def sliceChannels(width, height, R, G, B, n=2):
 
             _M = B[i_min:i_max, j_min:j_max]
             W.append(_M)
+
+            # Debug
+            RGB = np.zeros([int(height/n), int(width/n), 3], dtype=np.uint8)
+            RGB[:,:,0] = R[i_min:i_max, j_min:j_max]
+            RGB[:,:,1] = 0
+            RGB[:,:,2] = 0
+            img = Image.fromarray(RGB)
+            img.save('../data/dbg/'+str(k_i)+'_'+str(k_j)+'_in.png')
             
     return (U, V, W)
 
 # Polynomial regression
-def getPolyCoeff(M):
+def getPolyCoeff(M, dbg=False):
 
-    N = MinMaxScaler().fit_transform(M.reshape(-1, 1)).reshape(M.shape[0], M.shape[1]) # Min-Max normalisation of M
+    # N = MinMaxScaler().fit_transform(M.reshape(-1, 1)).reshape(M.shape[0], M.shape[1]) # Min-Max normalisation of M
+    N = M # No normalisation
 
     # Get meshgrids along 2 axis from 0 to 1 on each axis
     X, Y = np.meshgrid(np.linspace(start=0, stop=1, num=M.shape[1], endpoint=True), 
@@ -51,12 +68,13 @@ def getPolyCoeff(M):
     K = np.asarray(K).reshape(A.shape[1], 1)
 
     # Debug
-    # D = np.matmul(A, K).reshape(M.shape[0], M.shape[1])
-    # fig = plt.figure()
-    # ax = Axes3D(fig)
-    # ax.plot_surface(X=X, Y=Y, Z=N)
-    # ax.plot_surface(X=X, Y=Y, Z=D)
-    # plt.show()
+    if dbg:
+        D = np.matmul(A, K).reshape(M.shape[0], M.shape[1])
+        fig = plt.figure()
+        ax = Axes3D(fig)
+        ax.plot_surface(X=X, Y=Y, Z=N)
+        ax.plot_surface(X=X, Y=Y, Z=D)
+        plt.show()
 
     return K
 
@@ -78,37 +96,50 @@ def grow(width, height, n, KU, KV, KW):
     DV = []
     DW = []
     for i in range(n*n):
-        DU.append(255*np.matmul(A, KU[i]).reshape(h, w))
-        DV.append(255*np.matmul(A, KV[i]).reshape(h, w))
-        DW.append(255*np.matmul(A, KW[i]).reshape(h, w))
+        # With normalisation ON
+        # DU.append(255*np.matmul(A, KU[i]).reshape(h, w))
+        # DV.append(255*np.matmul(A, KV[i]).reshape(h, w))
+        # DW.append(255*np.matmul(A, KW[i]).reshape(h, w))
+
+        # Without normalisation     
+        DU.append(np.matmul(A, KU[i]).reshape(h, w))
+        DV.append(np.matmul(A, KV[i]).reshape(h, w))
+        DW.append(np.matmul(A, KW[i]).reshape(h, w))
         
         DU[i] = DU[i].clip(0, 255)
         DV[i] = DV[i].clip(0, 255)
         DW[i] = DW[i].clip(0, 255)
 
-    fig = plt.figure()
-    ax = Axes3D(fig)
-    ax.plot_surface(X=X, Y=Y, Z=DU[0])
-    
-    plt.show()
+    # fig = plt.figure()
+    # ax = Axes3D(fig)
+    # ax.plot_surface(X=X, Y=Y, Z=DU[0])
+    # plt.show()
 
-    print(DU[0].dtype)
-    print(DU[1].dtype)
+    RC = []
+    GC = []
+    BC = []
+    for i in range(n):
+        A = np.concatenate([DU[i*n], DU[i*n + 1]], axis=1)
+        B = np.concatenate([DV[i*n], DV[i*n + 1]], axis=1)
+        C = np.concatenate([DW[i*n], DW[i*n + 1]], axis=1)
+        for j in range(2, n):
+            idx = i*n + j
+            A = np.concatenate([A, DU[idx]], axis=1)
+            B = np.concatenate([B, DV[idx]], axis=1)
+            C = np.concatenate([C, DW[idx]], axis=1)
+        RC.append(A)
+        GC.append(B)
+        BC.append(C)
 
-    A = np.concatenate([DU[0], DU[1]], axis=1)
-    B = np.concatenate([DU[2], DU[3]], axis=1)
+    R = np.concatenate([RC[0], RC[1]], axis=0)
+    G = np.concatenate([GC[0], GC[1]], axis=0)
+    B = np.concatenate([BC[0], BC[1]], axis=0)
+    for i in range(2, n):
+        R = np.concatenate([R, RC[i]], axis=0)
+        G = np.concatenate([G, GC[i]], axis=0)
+        B = np.concatenate([B, BC[i]], axis=0)
 
-    R = np.concatenate((A, B), axis=0)
-
-    A = np.concatenate([DV[0], DV[1]], axis=1)
-    B = np.concatenate([DV[2], DV[3]], axis=1)
-
-    G = np.concatenate((A, B), axis=0)
-
-    A = np.concatenate([DW[0], DW[1]], axis=1)
-    B = np.concatenate([DW[2], DW[3]], axis=1)
-
-    B = np.concatenate((A, B), axis=0)
+    print("R.shape=", R.shape)
 
     RGB = np.zeros([height, width, 3], dtype=np.uint8)
     RGB[:,:,0] = R
@@ -116,33 +147,31 @@ def grow(width, height, n, KU, KV, KW):
     RGB[:,:,2] = B
 
     img = Image.fromarray(RGB)
-    img.save('testrgb.png')
+    img.save('../data/dbg/out.png')
+   
+    # Debug
+    RGB = np.zeros([int(height/n), int(width/n), 3], dtype=np.uint8)
+    RGB[:,:,1] = 0
+    RGB[:,:,2] = 0
+    for i in range(n):
+        for j in range(n):
+            idx = i*n + j
+            RGB[:,:,0] = DU[idx]
+            img = Image.fromarray(RGB)
+            img.save('../data/dbg/'+str(i)+'_'+str(j)+'_out.png')
 
-    # print(DU)
+    print("Growing process done")
 
 def main(img_path):
+
     img = Image.open(img_path)
-    # img.show()
 
     (width, height) = img.size
+    n = 4
 
-    n = 2
-
-    R = np.asarray(img.getdata(band=0), dtype=np.uint8)
-    R = R.reshape(height, width)
-
-    G = np.asarray(img.getdata(band=1), dtype=np.uint8)
-    G = G.reshape(height, width)
-
-    B = np.asarray(img.getdata(band=2), dtype=np.uint8)
-    B = B.reshape(height, width)
-
-    # print(len(R[0:int((height/n)), 0:int((width/n))]))
-    
-    # fig = plt.figure()
-    # ax = Axes3D(fig)
-    # ax.plot_surface(X=X, Y=Y, Z=R[0:int((height/n)), 0:int((width/n))])
-    # plt.show()
+    R = np.asarray(img.getdata(band=0), dtype=np.uint8).reshape(height, width)
+    G = np.asarray(img.getdata(band=1), dtype=np.uint8).reshape(height, width)
+    B = np.asarray(img.getdata(band=2), dtype=np.uint8).reshape(height, width)
 
     (U, V, W) = sliceChannels(width, height, R, G, B, n)
 
@@ -157,40 +186,20 @@ def main(img_path):
     KU = np.round(KU)
     KV = np.round(KV)
     KW = np.round(KW)
-
     # Done
 
-    # Test
+    # # Debug
+    # k_i = 2
+    # k_j = 0
+    # idx = k_i*n + k_j
+    # getPolyCoeff(U[idx], True)
 
+    # Test
     KU = KU[:]/1000
     KV = KV[:]/1000
     KW = KW[:]/1000
 
     grow(width, height, n, KU, KV, KW)
-    # Todo optimise: If coeff < 10e-9 then coeff = 0
-
-    # Test
-    # D = np.matmul()
-
-    # print(U[0].flatten().shape)
-
-    # print(dataset)
-
-    # poly_features = PolynomialFeatures(degree=3)
-    # print(poly_features)
-    # X_poly = poly_features.fit_transform(np.array([X.flatten(), Y.flatten()]))
-    # print(X_poly[2])
-
-    # print(reg)
-
-    # print(len(R[0:int((height/n)), 0:int((width/n))]))
-
-
-
-    # DEBUG: Check slicing
-    # img_U0 = Image.fromarray(U[0], mode='L')
-    # img_U0.show()
-    # print(U[0].shape)
 
 
 if __name__ == "__main__":
